@@ -1,0 +1,174 @@
+﻿@model StudentRecords.API.Models.Student
+
+<script type="text/javascript">
+
+    $(document).ready(function () {
+
+        $('#DateOfBirth').datepicker({
+            format: 'dd/mm/yyyy',
+            endDate: '0d',
+            autoclose: true
+        });
+
+        $.validator.methods.date = function (value, element) {
+            return this.optional(element) || moment(value, "DD/MM/YYYY", true).isValid();
+        }
+
+        window.addEventListener("submit", function (e) {
+            var form = e.target;
+            if (form.getAttribute("enctype") === "multipart/form-data") {
+                if (form.dataset.ajax) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    var xhr = new XMLHttpRequest();
+                    xhr.open(form.method, form.action);
+                    xhr.onreadystatechange = function () {
+                        if (xhr.readyState == 4 && xhr.status == 200) {
+                            if (form.dataset.ajaxUpdate) {
+                                var updateTarget = document.querySelector(form.dataset.ajaxUpdate);
+                                if (updateTarget) {
+                                    updateTarget.innerHTML = xhr.responseText;
+                                }
+                            }
+                            ReloadStudents();
+                        }
+                    };
+                    xhr.send(new FormData(form));
+                }
+            }
+        }, true);
+
+        $('#divStudentFiles .fancybox-buttons').fancybox({
+            openEffect: 'none',
+            closeEffect: 'none',
+            prevEffect: 'none',
+            nextEffect: 'none',
+            arrows: false,
+            closeBtn: false,
+            helpers: {
+                title: { type: 'inside' },
+                buttons: {}
+            },
+            afterLoad: function () {
+                this.title = 'Image ' + (this.index + 1) + ' of ' + this.group.length + (this.title ? ' - ' + this.title : '');
+            }
+        });
+
+        $.contextMenu({
+            selector: '#divStudentFiles .menu',
+            items: {
+                "delete": {
+                    name: "Delete", icon: "delete",
+                    callback: function (key, options) {
+                        var status = confirm("Are you sure you want to delete?");
+                        if (status) {
+                            deleteImage(options.$trigger.attr('id'), "img_");
+                        }
+                    }
+                }
+            }
+        });
+
+    });
+
+    function ReloadStudents() {
+        var msg = '@ViewBag.StdMsg';
+        if (msg == "success")
+            toastr.success('Operation has been excuted successfully', 'Success');
+        LoadStudents();
+    }
+
+    function deleteImage(el, preId) {
+        var ImageId = el.toString().replace(preId, '');
+        $.ajax({
+            url: "@Url.Action("DeleteStudentFile", "Default")",
+            type: "POST",
+            datatype: "JSON",
+            data: { "file_id": ImageId },
+            cache: false,
+            success: function (response) {
+                $("#" + el).remove();
+                if (response.res == "success")
+                    toastr.success("Image has been deleted successfully", 'Success');
+                else
+                    toastr.error("Error occured while deleting the image", 'Error');
+            },
+            failure: function (response) {
+                alert(response.d);
+            }
+        });
+    }
+
+</script>
+
+@using (Ajax.BeginForm("SaveStudent", "Default", new { } , new AjaxOptions
+{
+    HttpMethod = "Post",
+    UpdateTargetId = "divStudentForm",
+    InsertionMode = InsertionMode.Replace,
+    OnSuccess = "ReloadStudents"
+}, new { @enctype = "multipart/form-data" }))
+{
+    @Html.AntiForgeryToken()
+
+    <div class="card">
+        <div class="card-body">
+            <div class="input-group">
+                @Ajax.ActionLink("New", "NewStudent", null, new AjaxOptions { HttpMethod = "Post", UpdateTargetId = "divStudentForm", InsertionMode = InsertionMode.Replace }, new { @class = "btn btn-primary input-control" })
+                <button type="submit" class="btn btn-success input-control">Save</button>
+            </div>
+
+            <br />
+
+            @if (ViewData.ModelState[""] != null && ViewData.ModelState[""].Errors.Count > 0)
+            {
+                <div class="alert alert-danger alert-dismissable">
+                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                    @Html.ValidationSummary(true, "", new { @class = "text-white" })
+                </div>
+            }
+
+            @Html.HiddenFor(model => model.ID)
+
+            <div class="form-group">
+                @Html.LabelFor(model => model.Name)
+                @Html.TextBoxFor(model => model.Name, new { @class = "form-control" })
+                @Html.ValidationMessageFor(model => model.Name, "", new { @class = "text-danger" })
+            </div>
+            <div class="form-group">
+                @Html.LabelFor(model => model.Grade)
+                @Html.TextBoxFor(model => model.Grade, new { @class = "form-control" })
+                @Html.ValidationMessageFor(model => model.Grade, "", new { @class = "text-danger" })
+            </div>
+            <div class="form-group">
+                @Html.LabelFor(model => model.DateOfBirth)
+                @Html.TextBoxFor(model => model.DateOfBirth, new { @id = "DateOfBirth", @class = "form-control" })
+                @Html.ValidationMessageFor(model => model.DateOfBirth, "", new { @class = "text-danger" })
+            </div>
+            <div class="form-group">
+                @Html.LabelFor(model => model.Address)
+                @Html.TextBoxFor(model => model.Address, new { @class = "form-control" })
+                @Html.ValidationMessageFor(model => model.Address, "", new { @class = "text-danger" })
+            </div>
+            <div class="form-group">
+                @Html.Label("Student Images")
+                <input type="file" id="photo" name="upload" accept="image/*" />
+            </div>
+
+        </div>
+    </div>
+}
+
+<div class="card">
+    <div id="divStudentFiles" class="card-body">
+        @if (Model != null && Model.StudentFiles.Count > 0)
+        {
+            foreach (var item in Model.StudentFiles)
+            {
+                <a class="fancybox-buttons menu" data-fancybox-group="button" id="img_@item.ID" href="@Url.Content(item.FileName)">
+                    <img src="@Url.Content(item.FileName)" width="72" height="72" alt="" />
+                </a>
+            }
+        }
+    </div>
+</div>

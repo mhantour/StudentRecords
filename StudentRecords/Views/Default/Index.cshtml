@@ -1,0 +1,99 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var service_url = System.Configuration.ConfigurationManager.AppSettings["WebServiceUrl"].ToString();
+}
+
+@section styles{
+    <link type="text/css" href="@Url.Content("~/Content/DataTables-1.10.20/css/jquery.dataTables.min.css")" rel="stylesheet" />
+    <link type="text/css" href="@Url.Content("~/Content/toastr.min.css")" rel="stylesheet" />
+    <link type="text/css" href="@Url.Content("~/Content/bootstrap-datepicker.min.css")" rel="stylesheet" />
+    <link type="text/css" href="@Url.Content("~/Content/fancyBox/css/jquery.fancybox.css")" rel="stylesheet" />
+    <link type="text/css" href="@Url.Content("~/Content/fancyBox/css/jquery.fancybox-buttons.css")" rel="stylesheet" />
+    <link type="text/css" href="@Url.Content("~/Content/contextMenu/jquery.contextMenu.min.css")" rel="stylesheet" />
+}
+
+@section scripts{
+    <script type="text/javascript" src="@Url.Content("~/Content/DataTables-1.10.20/js/jquery.dataTables.min.js")"></script>
+    <script type="text/javascript" src="@Url.Content("~/Scripts/toastr.min.js")"></script>
+    <script type="text/javascript" src="@Url.Content("~/Scripts/moment.min.js")"></script>
+    <script type="text/javascript" src="@Url.Content("~/Scripts/bootstrap-datepicker.min.js")"></script>
+    <script type="text/javascript" src="@Url.Content("~/Content/fancyBox/js/jquery.mousewheel-3.0.6.pack.js")"></script>
+    <script type="text/javascript" src="@Url.Content("~/Content/fancyBox/js/jquery.fancybox.pack.js")"></script>
+    <script type="text/javascript" src="@Url.Content("~/Content/fancyBox/js/jquery.fancybox-buttons.js")"></script>
+    <script type="text/javascript" src="@Url.Content("~/Content/contextMenu/jquery.ui.position.min.js")"></script>
+    <script type="text/javascript" src="@Url.Content("~/Content/contextMenu/jquery.contextMenu.min.js")"></script>
+}
+
+<script type="text/javascript">
+
+    $(document).ready(function () {
+
+        LoadStudents();
+
+    });
+
+    function LoadStudents() {
+
+        $('#myTable').DataTable().destroy();
+        $('#myTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "filter": true,
+            "orderMulti": false,
+            "deferRender": true,
+            "dom": 'frt<"pull-right"l><"pull-left"i><"col-md-12"p>',
+            "ajax": {
+                "url": '@service_url/Search',
+                "type": "POST",
+                "datatype": "JSON",
+            },
+            "columns": [
+                { "data": "ID", "name": "ID", "visible": false, "className": "hidden" },
+                { "data": "Name", "name": "Name" },
+                { "data": "Grade", "name": "Grade" },
+                {
+                    "sortable": false, mRender: function (data, type, row) {
+                        var linkEdit = '@Ajax.ActionLink("Show", "ShowStudent", new { @student_id = -1 }, new AjaxOptions { HttpMethod = "Post", UpdateTargetId = "divStudentForm", InsertionMode = InsertionMode.Replace }, new { @class = "btn btn-sm btn-primary" })';
+                        linkEdit = linkEdit.replace("-1", row.ID);
+
+                        var linkDelete = '@Ajax.ActionLink("Delete", "DeleteStudent", new { @student_id = -1 }, new AjaxOptions { HttpMethod = "Post", Confirm = "Are you sure you want to delete -2" + "؟", UpdateTargetId = "divStudentForm", InsertionMode = InsertionMode.Replace, OnSuccess = "ReloadStudents" }, new { @class = "btn btn-sm btn-danger" })';
+                        linkDelete = linkDelete.replace("-1", row.ID);
+                        linkDelete = linkDelete.replace("-2", row.Name);
+
+                        return linkEdit + " " + linkDelete;
+                    }
+                }
+            ]
+        });
+    }
+</script>
+
+<div class="row">
+
+    <div id="divStudentForm" class="col-4">
+        @{ Html.RenderPartial("SaveStudent"); }
+    </div>
+
+    <div class="col-8">
+        <div class="card card-primary">
+            <div class="card-header">
+                <h3 class="card-title">Students Info.</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="myTable" class="table table-striped" width="100%">
+                        <thead>
+                            <tr>
+                                <th class="hidden">id</th>
+                                <th>Student Name</th>
+                                <th>Student Grade</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
